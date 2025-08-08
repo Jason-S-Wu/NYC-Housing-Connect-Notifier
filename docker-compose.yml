@@ -5,5 +5,5 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data/${SAVE_FILE_NAME}:/app/${SAVE_FILE_NAME}
+      - ./data/${SAVE_FILE_NAME:-rentals.json}:/app/${SAVE_FILE_NAME:-rentals.json}
     restart: unless-stopped
