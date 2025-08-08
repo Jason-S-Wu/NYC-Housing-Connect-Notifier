@@ -58,7 +58,14 @@ func main() {
 			local.WriteRentalsToFile(rentalData, saveFileName)
 		}
 
-		log.Printf("Sleeping for %d hours...\n", sleepDurationHrs)
-		time.Sleep(time.Duration(sleepDurationHrs) * time.Hour)
+		current := time.Now()
+		now := time.Date(current.Year(), current.Month(), current.Day(), 0, 0, 0, 0, current.Location())
+		next := now.Truncate(time.Hour).Add(time.Duration(sleepDurationHrs) * time.Hour)
+		if !next.After(now) {
+			next = next.Add(time.Duration(sleepDurationHrs) * time.Hour)
+		}
+		sleepDuration := next.Sub(current)
+		log.Printf("Sleeping until next interval at %s (in %v)...\n", next.Format(time.RFC1123), sleepDuration)
+		time.Sleep(sleepDuration)
 	}
 }
