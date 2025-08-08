@@ -20,7 +20,6 @@ func main() {
 	householdIncomeStr := os.Getenv("HOUSEHOLD_INCOME")
 	householdSizeStr := os.Getenv("HOUSEHOLD_SIZE")
 	saveFileName := os.Getenv("SAVE_FILE_NAME")
-	sleepDurationHrsStr := os.Getenv("SLEEP_DURATION_HOURS")
 
 	householdIncome, err := strconv.Atoi(householdIncomeStr)
 	if err != nil {
@@ -31,12 +30,9 @@ func main() {
 		log.Fatalf("Invalid HOUSEHOLD_SIZE: %v", err)
 	}
 
-	sleepDurationHrs, err := strconv.Atoi(sleepDurationHrsStr)
-	if err != nil {
-		sleepDurationHrs = 6 // Default to 6 hours if parsing fails
-	}
-
 	for {
+		log.Println("Starting lottery check...")
+
 		rentalData, err := fetch_housing_connect.FetchAllLotteries(householdIncome, householdSize)
 		if err != nil {
 			log.Printf("Error fetching lotteries: %v", err)
@@ -49,23 +45,40 @@ func main() {
 
 			newRentals := local.NewRentals(oldRentals, rentalData)
 
-			println("New Rentals:")
-			for _, rental := range newRentals {
-				println(rental.String())
-				discord.SendRentalNotification(webhookURL, rental)
+			if len(newRentals) > 0 {
+				log.Println("Found new rentals:")
+				for _, rental := range newRentals {
+					log.Println(rental.String())
+					discord.SendRentalNotification(webhookURL, rental)
+				}
+			} else {
+				log.Println("No new rentals found.")
 			}
 
 			local.WriteRentalsToFile(rentalData, saveFileName)
 		}
-
-		current := time.Now()
-		now := time.Date(current.Year(), current.Month(), current.Day(), 0, 0, 0, 0, current.Location())
-		next := now.Truncate(time.Hour).Add(time.Duration(sleepDurationHrs) * time.Hour)
-		if !next.After(now) {
-			next = next.Add(time.Duration(sleepDurationHrs) * time.Hour)
+		
+		// Calculate sleep duration until the next 6-hour interval (e.g., 12 AM, 6 AM, 12 PM, 6 PM) in Eastern US time.
+		loc, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			log.Fatalf("Failed to load timezone: %v", err)
 		}
-		sleepDuration := next.Sub(current)
-		log.Printf("Sleeping until next interval at %s (in %v)...\n", next.Format(time.RFC1123), sleepDuration)
+		current := time.Now().In(loc)
+		// Get the current hour of the day.
+		hour := current.Hour()
+		// Find the next 6-hour multiple.
+		nextHour := (hour/6)*6 + 6
+		// If the next hour is today, but has already passed, set it for the next day.
+		if nextHour >= 24 {
+			nextHour -= 24
+			current = current.Add(24 * time.Hour)
+		}
+		
+		// Create the next scheduled time.
+		next := time.Date(current.Year(), current.Month(), current.Day(), nextHour, 0, 0, 0, loc)
+		sleepDuration := next.Sub(time.Now().In(loc))
+
+		log.Printf("Lottery check finished. Sleeping until %s (in %v)...\n", next.Format(time.RFC1123), sleepDuration)
 		time.Sleep(sleepDuration)
 	}
 }
