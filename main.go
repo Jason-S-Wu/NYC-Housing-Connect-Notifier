@@ -14,11 +14,7 @@ import (
 )
 
 func main() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	godotenv.Load()
 
 	webhookURL := os.Getenv("DISCORD_WEBHOOK")
 	householdIncomeStr := os.Getenv("HOUSEHOLD_INCOME")
