@@ -18,6 +18,9 @@ FROM alpine:3.22
 
 WORKDIR /app
 
+# Install necessary packages
+RUN apk update && apk add bash && apk --no-cache add tzdata
+
 # Upgrade packages in a single layer
 RUN apk upgrade --no-cache
 
