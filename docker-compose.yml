@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  housing_connect_notifier:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./data/${SAVE_FILE_NAME}:/app/${SAVE_FILE_NAME}
+    restart: unless-stopped
