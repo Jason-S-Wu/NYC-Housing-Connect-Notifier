@@ -77,3 +77,6 @@ docker-compose up --build
   - `fetch_housing_connect/` - Fetches and filters lotteries
   - `discord/` - Sends Discord notifications
   - `local/` - Local file read/write helpers
+
+# Screenshots
+<img width="671" height="1104" alt="image" src="https://github.com/user-attachments/assets/85f05d9c-f562-4099-b7f3-d8c41480c832" />
