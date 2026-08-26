@@ -2,62 +2,64 @@ package main
 
 import (
 	"log"
-	"main/models"
+	"main/utils/config"
 	"main/utils/discord"
 	"main/utils/fetch_housing_connect"
 	"main/utils/local"
 	"os"
-	"strconv"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
-
-	webhookURL := os.Getenv("DISCORD_WEBHOOK")
-	householdIncomeStr := os.Getenv("HOUSEHOLD_INCOME")
-	householdSizeStr := os.Getenv("HOUSEHOLD_SIZE")
-	saveFileName := os.Getenv("SAVE_FILE_NAME")
-
-	householdIncome, err := strconv.Atoi(householdIncomeStr)
-	if err != nil {
-		log.Fatalf("Invalid HOUSEHOLD_INCOME: %v", err)
+	configPath := "config.json"
+	if len(os.Args) > 1 && os.Args[1] != "" {
+		configPath = os.Args[1]
 	}
-	householdSize, err := strconv.Atoi(householdSizeStr)
+
+	appConfig, err := config.LoadConfig(configPath)
 	if err != nil {
-		log.Fatalf("Invalid HOUSEHOLD_SIZE: %v", err)
+		log.Fatalf("Failed to load config file %q: %v", configPath, err)
 	}
+
+	log.Printf("Loaded %d user configuration(s) from %s", len(appConfig.Users), configPath)
 
 	for {
 		log.Println("Starting lottery check...")
 
-		rentalData, err := fetch_housing_connect.FetchAllLotteries(householdIncome, householdSize)
-		if err != nil {
-			log.Printf("Error fetching lotteries: %v", err)
-		} else {
-			oldRentals, err := local.ReadRentalsFromFile(saveFileName)
+		for _, userConfig := range appConfig.Users {
+			log.Printf("Checking lotteries for user %q...", userConfig.Name)
+
+			rentalData, err := fetch_housing_connect.FetchAllLotteries(userConfig.HouseholdIncome, userConfig.HouseholdSize)
 			if err != nil {
-				log.Printf("Error reading old rentals from file: %v", err)
-				oldRentals = []models.Rental{}
+				log.Printf("Error fetching lotteries for user %q: %v", userConfig.Name, err)
+				continue
+			}
+
+			oldRentals, err := local.ReadRentalsFromFile(userConfig.SaveFileName)
+			if err != nil {
+				log.Printf("Error reading old rentals for user %q from file %q: %v", userConfig.Name, userConfig.SaveFileName, err)
+				continue
 			}
 
 			newRentals := local.NewRentals(oldRentals, rentalData)
 
 			if len(newRentals) > 0 {
-				log.Println("Found new rentals:")
+				log.Printf("Found %d new rental(s) for user %q.", len(newRentals), userConfig.Name)
 				for _, rental := range newRentals {
 					log.Println(rental.String())
-					discord.SendRentalNotification(webhookURL, rental)
+					if err := discord.SendRentalNotification(userConfig.DiscordWebhook, rental); err != nil {
+						log.Printf("Failed to send notification for user %q: %v", userConfig.Name, err)
+					}
 				}
 			} else {
-				log.Println("No new rentals found.")
+				log.Printf("No new rentals found for user %q.", userConfig.Name)
 			}
 
-			local.WriteRentalsToFile(rentalData, saveFileName)
+			if err := local.WriteRentalsToFile(rentalData, userConfig.SaveFileName); err != nil {
+				log.Printf("Failed to save rentals for user %q to file %q: %v", userConfig.Name, userConfig.SaveFileName, err)
+			}
 		}
-		
+
 		// Calculate sleep duration until the next 6-hour interval (e.g., 12 AM, 6 AM, 12 PM, 6 PM) in Eastern US time.
 		loc, err := time.LoadLocation("America/New_York")
 		if err != nil {
@@ -73,7 +75,7 @@ func main() {
 			nextHour -= 24
 			current = current.Add(24 * time.Hour)
 		}
-		
+
 		// Create the next scheduled time.
 		next := time.Date(current.Year(), current.Month(), current.Day(), nextHour, 0, 0, 0, loc)
 		sleepDuration := next.Sub(time.Now().In(loc))

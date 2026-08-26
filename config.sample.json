@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "name": "user1",
+      "discord_webhook": "https://discord.com/api/webhooks/...",
+      "household_income": 90000,
+      "household_size": 2,
+      "save_file_name": "data/user1-rentals.json"
+    }
+  ]
+}

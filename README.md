@@ -30,28 +30,49 @@ git clone https://github.com/Jason-S-Wu/NYC-Housing-Connect-Notifier.git
 cd NYC-Housing-Connect-Notifier
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure Users
 
-Copy `.env.sample` to `.env` and fill in your values:
+Copy `config.sample.json` to `config.json` and fill in your values:
 
-```env
-DISCORD_WEBHOOK=your_discord_webhook_url
-HOUSEHOLD_INCOME=your_household_income
-HOUSEHOLD_SIZE=your_household_size
-SAVE_FILE_NAME=rentals.json
+```json
+{
+  "users": [
+    {
+      "name": "alice",
+      "discord_webhook": "https://discord.com/api/webhooks/...",
+      "household_income": 90000,
+      "household_size": 2,
+      "save_file_name": "data/alice-rentals.json"
+    },
+    {
+      "name": "bob",
+      "discord_webhook": "https://discord.com/api/webhooks/...",
+      "household_income": 120000,
+      "household_size": 3,
+      "save_file_name": "data/bob-rentals.json"
+    }
+  ]
+}
 ```
 
-**Variables:**
+**Fields per user:**
 
-- `DISCORD_WEBHOOK`: Your Discord webhook URL
-- `HOUSEHOLD_INCOME`: Your household's annual income (number)
-- `HOUSEHOLD_SIZE`: Number of people in your household (number)
-- `SAVE_FILE_NAME`: File to store seen lotteries (default: `rentals.json`)
+- `name`: A label shown in logs
+- `discord_webhook`: Discord webhook URL
+- `household_income`: Annual household income (number)
+- `household_size`: Number of people in household (number)
+- `save_file_name`: File path where seen lotteries are stored
 
 ### 3. Run Locally
 
 ```sh
 go run main.go
+```
+
+Optional: pass a custom config file path:
+
+```sh
+go run main.go path/to/config.json
 ```
 
 ### 4. Run with Docker
@@ -60,7 +81,7 @@ Build and run the container:
 
 ```sh
 docker build -t nyc-housing-connect-notifier .
-docker run --env-file .env -v $(pwd)/data:/app/data nyc-housing-connect-notifier
+docker run -v $(pwd)/config.json:/app/config.json:ro -v $(pwd)/data:/app/data nyc-housing-connect-notifier
 ```
 
 Or use Docker Compose:
@@ -72,11 +93,14 @@ docker-compose up --build
 ## File Structure
 
 - `main.go` - Entry point
+- `config.sample.json` - Example configuration for one or more users
 - `models/` - Data models
 - `utils/`
+  - `config/` - Config file loading and validation
   - `fetch_housing_connect/` - Fetches and filters lotteries
   - `discord/` - Sends Discord notifications
   - `local/` - Local file read/write helpers
 
 # Screenshots
+
 <img width="671" height="1104" alt="image" src="https://github.com/user-attachments/assets/85f05d9c-f562-4099-b7f3-d8c41480c832" />

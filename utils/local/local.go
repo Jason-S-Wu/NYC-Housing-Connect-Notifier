@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"main/models"
 	"os"
+	"path/filepath"
 )
 
 // WriteRentalsToFile serializes rentals to JSON and writes to a file
@@ -13,6 +14,14 @@ func WriteRentalsToFile(rentals []models.Rental, filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal rentals to JSON: %w", err)
 	}
+
+	dir := filepath.Dir(filename)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directories for %q: %w", filename, err)
+		}
+	}
+
 	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write JSON to file: %w", err)
@@ -24,6 +33,9 @@ func WriteRentalsToFile(rentals []models.Rental, filename string) error {
 func ReadRentalsFromFile(filename string) ([]models.Rental, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.Rental{}, nil
+		}
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 	var rentals []models.Rental
