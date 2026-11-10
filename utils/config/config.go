@@ -8,7 +8,9 @@ import (
 )
 
 type AppConfig struct {
-	Users []UserConfig `json:"users"`
+	Interval        int          `json:"interval,omitempty"`
+	IntervalMinutes int          `json:"interval_minutes,omitempty"`
+	Users           []UserConfig `json:"users"`
 }
 
 type UserConfig struct {
@@ -38,6 +40,20 @@ func LoadConfig(path string) (*AppConfig, error) {
 }
 
 func validateConfig(cfg *AppConfig) error {
+	if cfg.Interval < 0 || cfg.IntervalMinutes < 0 {
+		return fmt.Errorf("interval must be greater than 0")
+	}
+	if cfg.IntervalMinutes <= 0 {
+		if cfg.Interval > 0 {
+			cfg.IntervalMinutes = cfg.Interval
+		} else {
+			cfg.IntervalMinutes = 1
+			cfg.Interval = 1
+		}
+	} else if cfg.Interval <= 0 {
+		cfg.Interval = cfg.IntervalMinutes
+	}
+
 	if len(cfg.Users) == 0 {
 		return fmt.Errorf("config must include at least one user in users")
 	}

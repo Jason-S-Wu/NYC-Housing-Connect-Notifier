@@ -23,6 +23,17 @@ func main() {
 
 	log.Printf("Loaded %d user configuration(s) from %s", len(appConfig.Users), configPath)
 
+	intervalMinutes := appConfig.IntervalMinutes
+	if intervalMinutes <= 0 {
+		intervalMinutes = 1
+	}
+	log.Printf("Check interval set to %d minute(s)", intervalMinutes)
+
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		log.Fatalf("Failed to load timezone: %v", err)
+	}
+
 	for {
 		log.Println("Starting lottery check...")
 
@@ -60,27 +71,41 @@ func main() {
 			}
 		}
 
-		// Calculate sleep duration until the next 6-hour interval (e.g., 12 AM, 6 AM, 12 PM, 6 PM) in Eastern US time.
-		loc, err := time.LoadLocation("America/New_York")
-		if err != nil {
-			log.Fatalf("Failed to load timezone: %v", err)
-		}
+		// Calculate sleep duration until the next interval aligned to minute boundaries (e.g., 12:01:00, 12:02:00).
 		current := time.Now().In(loc)
-		// Get the current hour of the day.
-		hour := current.Hour()
-		// Find the next 6-hour multiple.
-		nextHour := (hour/6)*6 + 6
-		// If the next hour is today, but has already passed, set it for the next day.
-		if nextHour >= 24 {
-			nextHour -= 24
-			current = current.Add(24 * time.Hour)
-		}
-
-		// Create the next scheduled time.
-		next := time.Date(current.Year(), current.Month(), current.Day(), nextHour, 0, 0, 0, loc)
+		next := nextScheduledTime(current, intervalMinutes, loc)
 		sleepDuration := next.Sub(time.Now().In(loc))
+		if sleepDuration < 0 {
+			sleepDuration = 0
+		}
 
 		log.Printf("Lottery check finished. Sleeping until %s (in %v)...\n", next.Format(time.RFC1123), sleepDuration)
 		time.Sleep(sleepDuration)
 	}
+}
+
+// nextScheduledTime calculates the next scheduled check time based on interval in minutes.
+// It aligns checks to wall-clock minute boundaries (e.g., 12:01:00, 12:02:00, etc.).
+func nextScheduledTime(current time.Time, intervalMinutes int, loc *time.Location) time.Time {
+	if intervalMinutes <= 0 {
+		intervalMinutes = 1
+	}
+	if loc != nil {
+		current = current.In(loc)
+	} else {
+		loc = current.Location()
+	}
+
+	totalMinutes := current.Hour()*60 + current.Minute()
+	nextTotalMinutes := (totalMinutes/intervalMinutes + 1) * intervalMinutes
+
+	nextHour := nextTotalMinutes / 60
+	nextMinute := nextTotalMinutes % 60
+	next := time.Date(current.Year(), current.Month(), current.Day(), nextHour, nextMinute, 0, 0, loc)
+
+	for !next.After(current) {
+		next = next.Add(time.Duration(intervalMinutes) * time.Minute)
+	}
+
+	return next
 }

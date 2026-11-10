@@ -36,6 +36,7 @@ Copy `config.sample.json` to `config.json` and fill in your values:
 
 ```json
 {
+  "interval": 1,
   "users": [
     {
       "name": "alice",
@@ -54,6 +55,10 @@ Copy `config.sample.json` to `config.json` and fill in your values:
   ]
 }
 ```
+
+**Configuration options:**
+
+- `interval`: Interval in minutes between lottery checks (optional integer, default: `1`). Aligns runs to clock minute boundaries (e.g., 12:01:00, 12:02:00). Can also be specified as `interval_minutes`.
 
 **Fields per user:**
 
