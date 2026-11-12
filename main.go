@@ -66,7 +66,8 @@ func main() {
 				log.Printf("No new rentals found for user %q.", userConfig.Name)
 			}
 
-			if err := local.WriteRentalsToFile(rentalData, userConfig.SaveFileName); err != nil {
+			mergedRentals := local.MergeRentals(oldRentals, rentalData)
+			if err := local.WriteRentalsToFile(mergedRentals, userConfig.SaveFileName); err != nil {
 				log.Printf("Failed to save rentals for user %q to file %q: %v", userConfig.Name, userConfig.SaveFileName, err)
 			}
 		}

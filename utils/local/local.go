@@ -63,3 +63,32 @@ func NewRentals(oldRentals []models.Rental, newRentals []models.Rental) []models
 
 	return uniqueNewRentals
 }
+
+// MergeRentals combines oldRentals and newRentals, updating existing rentals with
+// latest information and preserving previously seen rentals so they are never
+// re-notified even if temporarily omitted in future API responses.
+func MergeRentals(oldRentals []models.Rental, newRentals []models.Rental) []models.Rental {
+	rentalMap := make(map[int]models.Rental)
+	var order []int
+
+	for _, rental := range oldRentals {
+		if _, exists := rentalMap[rental.LotteryID]; !exists {
+			order = append(order, rental.LotteryID)
+		}
+		rentalMap[rental.LotteryID] = rental
+	}
+
+	for _, rental := range newRentals {
+		if _, exists := rentalMap[rental.LotteryID]; !exists {
+			order = append(order, rental.LotteryID)
+		}
+		rentalMap[rental.LotteryID] = rental
+	}
+
+	merged := make([]models.Rental, 0, len(order))
+	for _, id := range order {
+		merged = append(merged, rentalMap[id])
+	}
+	return merged
+}
+
